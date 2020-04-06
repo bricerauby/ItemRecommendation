@@ -1,0 +1,4 @@
+.vscode/*
+ItemRecommendationEnv/*
+data/*
+.mypy_cache/*
