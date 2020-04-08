@@ -1,16 +1,14 @@
+from dataset import Dataset
+from embedding import Graph
+# we load the dataset and perform edge extraction to get the train test split
+dataset = Dataset()
+x_train, y_train, x_test, y_test = dataset.get_split()
 
-import snap
+# we perform the embedding of the nodes in the network using the residual network 
+graph = Graph(dataset.residual_network)
 
-graph = snap.LoadEdgeList(snap.PUNGraph,'data/amazon-meta.txt')
+# we get the embeddings for both set
+x_train_edges = graph.get_embeddings(x_train)
+x_test_edges = graph.get_embeddings(x_test)
 
-
-
-CntV = snap.TIntPrV()
-
-snap.GetWccSzCnt(graph, CntV)
-for p in CntV:
-    print("size %d: count %d" % (p.GetVal1(), p.GetVal2()))
-
-snap.GetOutDegCnt(graph, CntV)
-for p in CntV:
-    print("degree %d: count %d" % (p.GetVal1(), p.GetVal2()))
+# we do the classification
