@@ -1,5 +1,5 @@
 from dataset import Dataset
-from embedding import Graph
+from graph import Graph
 # we load the dataset and perform edge extraction to get the train test split
 dataset = Dataset()
 x_train, y_train, x_test, y_test = dataset.get_split()
