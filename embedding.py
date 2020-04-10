@@ -20,11 +20,11 @@ class Embedding():
 
 
 class Node2vec(Embedding):
-    def __init__(self, graph, workers=1):
+    def __init__(self, graph):
         Embedding.__init__(self,graph)
         self.nx_graph = snap2nx(self.graph)
         start = time.time()
-        self.node2vec = node2vec.Node2Vec(self.nx_graph, walk_length=10, num_walks=1, p=1, q=1,workers=workers)
+        self.node2vec = node2vec.Node2Vec(self.nx_graph, walk_length=10, num_walks=1, p=1, q=1)
         print('time taken for the random walk generation {}'.format(time.time()-start))
         self.walks = self.node2vec.walks
     def get_walks(self):
@@ -37,5 +37,5 @@ if __name__ == "__main__":
     start = time.time()
     graph_nx = snap2nx(dataset.network)
     print('time taken for conversion {}'.format(time.time()-start))
-    embedding = Node2vec(dataset.network, workers=1)
+    embedding = Node2vec(dataset.network)
     
