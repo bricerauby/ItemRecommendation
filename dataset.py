@@ -8,9 +8,17 @@ import time
 import tqdm
 import numpy as np
 import snap
+import networkx
+import tempfile
 
-DEBUG = False
+DEBUG = True
 
+def snap2nx(snap_graph):
+    fo = tempfile.NamedTemporaryFile()		
+    snap.SaveEdgeList(snap_graph, fo.name, "Save as tab-separated list of edges")
+    nx_graph = networkx.read_edgelist(fo.name)
+    fo.close()
+    return nx_graph
 
 class Dataset(object):
     '''
@@ -27,8 +35,7 @@ class Dataset(object):
 
     Attributes
     ----------
-    network : snap graph representation of the whole network
-    residual_network : snap graph representation of the residual network
+    residual_network : networkx graph representation of the residual network
     removed_edges : list of the edges that have been removed to obtain the residual network
     kept_edges : list of the edges that have been kept in the residual network
     x_train : the edges in the train set 
@@ -36,17 +43,16 @@ class Dataset(object):
     x_test : the edges in the test set 
     y_test : the labels for the test set 0 is fictive edge 1 is existing edge
     '''
-
     def __init__(self, path='data/amazon-meta.txt', residual_ratio=0.5, seed=0):
-        self.network = snap.LoadEdgeList(snap.PNGraph, path)
-        self.residual_network = snap.LoadEdgeList(snap.PNGraph, path)
+        network = snap.LoadEdgeList(snap.PNGraph, path)
+        residual_network = snap.LoadEdgeList(snap.PNGraph, path)
 
         self.removed_edges = set()
         self.kept_edges = set()
         # get the number of the edges to remove
         n_edges_to_keep = int(
-            (residual_ratio) * self.residual_network.GetEdges())
-        n_edges_to_remove = self.residual_network.GetEdges() - n_edges_to_keep
+            (residual_ratio) * residual_network.GetEdges())
+        n_edges_to_remove = residual_network.GetEdges() - n_edges_to_keep
 
         # set the seed
         np.random.seed(seed)
@@ -61,12 +67,12 @@ class Dataset(object):
 
         # Make sure that the tree has not too many edges already, it is very
         # likely to do only one iteration (it is very expensive otherwise)
-        min_n_edges, min_node_id = self.network.GetEdges(), None
-        for i in range(self.network.GetNodes()):
-            node_id = self.residual_network.GetRndNId()
-            BfsTree = snap.GetBfsTree(self.network, node_id, True, True)
+        min_n_edges, min_node_id = network.GetEdges(), None
+        for i in range(network.GetNodes()):
+            node_id = residual_network.GetRndNId()
+            BfsTree = snap.GetBfsTree(network, node_id, True, True)
             n_edges = BfsTree.GetEdges()
-            is_acceptable = n_edges < self.network.GetEdges() * residual_ratio
+            is_acceptable = n_edges < network.GetEdges() * residual_ratio
             if is_acceptable:
                 break
             elif min_n_edges > n_edges:
@@ -74,36 +80,36 @@ class Dataset(object):
                 min_n_edges = n_edges
 
             # we remove the node in order to sample without replacement
-            self.residual_network.DelNode(node_id)
+            residual_network.DelNode(node_id)
 
         if is_acceptable:
             print('small enough spanning tree was found in {} iteration'.format(i+1))
         else:
-            BfsTree = snap.GetBfsTree(self.network, min_node_id, True, True)
+            BfsTree = snap.GetBfsTree(network, min_node_id, True, True)
             print('small enough spanning tree was not found, the smallest had {} edges'.format(
                 min_n_edges))
 
         # Keep only the node from the network we will add the edges
-        self.residual_network.Clr()
-        for node in self.network.Nodes():
-            self.residual_network.AddNode(node.GetId())
+        residual_network.Clr()
+        for node in network.Nodes():
+            residual_network.AddNode(node.GetId())
 
         # we add the edges from the spanning tree
         self.kept_edges = set()
         for edge in BfsTree.Edges():
             self.kept_edges.add(edge.GetId())
-            self.residual_network.AddEdge(*edge.GetId())
+            residual_network.AddEdge(*edge.GetId())
 
         # we shuffle the index to have access to a random permutation
         # of the edges while iterating over the edges
         shuffled_indexes = np.random.permutation(
-            np.arange(self.network.GetEdges()))
+            np.arange(network.GetEdges()))
 
         # we use a set for O(1) addition and check operation
         indexes_to_keep = set(
             shuffled_indexes[:n_edges_to_keep-len(self.kept_edges)])
 
-        for i, edge in enumerate(self.network.Edges()):
+        for i, edge in enumerate(network.Edges()):
             edge_id = edge.GetId()
             if i in indexes_to_keep:
                 # if the edge is already added we will add another edge from the permutation
@@ -116,14 +122,14 @@ class Dataset(object):
                             break
                 else:
                     self.kept_edges.add(edge_id)
-                    self.residual_network.AddEdge(*edge_id)
+                    residual_network.AddEdge(*edge_id)
             else:
                 self.removed_edges.add(edge_id)
 
-        self.residual_network.Defrag()
-        print('keep ratio : {}'.format(self.residual_network.GetEdges()/self.network.GetEdges()))
+        residual_network.Defrag()
+        print('keep ratio : {}'.format(residual_network.GetEdges()/network.GetEdges()))
         print('the network is connected : {}'.format(
-            snap.IsWeaklyConn(self.residual_network)))
+            snap.IsWeaklyConn(residual_network)))
 
         print('time taken {} to generate the residual network'.format(
             time.time()-start))
@@ -135,11 +141,11 @@ class Dataset(object):
 
         print('generating random fictive edges')
         for i in tqdm.tqdm(range(n_train//2 + n_test//2)):
-            Id_src = self.network.GetRndNId(Rnd)
-            Id_dst = self.network.GetRndNId(Rnd)
-            while self.network.IsEdge(Id_src, Id_dst) or Id_dst == Id_src:
-                Id_src = self.network.GetRndNId(Rnd)
-                Id_dst = self.network.GetRndNId(Rnd)
+            Id_src = network.GetRndNId(Rnd)
+            Id_dst = network.GetRndNId(Rnd)
+            while network.IsEdge(Id_src, Id_dst) or Id_dst == Id_src:
+                Id_src = network.GetRndNId(Rnd)
+                Id_dst = network.GetRndNId(Rnd)
             self.fictive_edges.append((Id_src, Id_dst))
 
         self.x_train, self.y_train = [], []
@@ -160,6 +166,7 @@ class Dataset(object):
         shuffled_indexes = np.random.permutation(n_train)
         self.x_train = self.x_train[shuffled_indexes]
         self.y_train = self.y_train[shuffled_indexes]
+        self.residual_network = snap2nx(residual_network)
 
     def get_split(self):
         return self.x_train, self.y_train, self.x_test, self.y_test
