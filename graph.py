@@ -2,7 +2,7 @@ import snap
 from embedding import Node2vec
 DEBUG = True
 
-def perform_random_walks(graph, N, L, gamma):
+def perform_random_walks(graph, N, L):
     '''
     :param graph: networkx graph
     :param N: the number of walks for each node
@@ -49,7 +49,7 @@ class Graph(object):
     '''
     def __init__(self, network, embedding='node2vec', seed=0):
         self.network = network
-
+        
     def get_embeddings(self, edges):
         raise NotImplementedError
 
