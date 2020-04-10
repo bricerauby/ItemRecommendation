@@ -9,7 +9,7 @@ import tqdm
 import numpy as np
 import snap
 
-DEBUG = True
+DEBUG = False
 
 
 class Dataset(object):
@@ -165,7 +165,7 @@ class Dataset(object):
         return self.x_train, self.y_train, self.x_test, self.y_test
 
 if __name__ == '__main__':
-    dataset = Dataset()
+    
     if not DEBUG:
         url = 'https://snap.stanford.edu/data/amazon0505.txt.gz'
 
@@ -181,3 +181,5 @@ if __name__ == '__main__':
         with open('data/amazon-meta.txt', 'wb') as decompressed_file:
             with gzip.open('data/amazon-meta.txt.gz', 'rb') as compressed_file:
                 shutil.copyfileobj(compressed_file, decompressed_file)
+    else: 
+        dataset = Dataset()
