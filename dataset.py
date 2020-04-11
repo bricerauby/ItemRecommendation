@@ -11,12 +11,14 @@ import snap
 import networkx
 import tempfile
 
+import embedding
+
 DEBUG = True
 
 def snap2nx(snap_graph):
     fo = tempfile.NamedTemporaryFile()		
     snap.SaveEdgeList(snap_graph, fo.name, "Save as tab-separated list of edges")
-    nx_graph = networkx.read_edgelist(fo.name)
+    nx_graph = networkx.read_edgelist(fo.name, create_using=networkx.MultiGraph)
     fo.close()
     return nx_graph
 
@@ -26,7 +28,7 @@ class Dataset(object):
 
     Parameters
     ----------
-    path : str
+    data_path : str
         The path to the dataset (defaulted to the path set up by the main execution).
     residual_ratio : float
         The proportion of edges to keep in the residual network 
@@ -43,12 +45,12 @@ class Dataset(object):
     x_test : the edges in the test set 
     y_test : the labels for the test set 0 is fictive edge 1 is existing edge
     '''
-    def __init__(self, path='data/amazon-meta.txt', residual_ratio=0.5, seed=0):
-        network = snap.LoadEdgeList(snap.PNGraph, path)
-        residual_network = snap.LoadEdgeList(snap.PNGraph, path)
+    def __init__(self, data_path='data/amazon-meta.txt', residual_ratio=0.5, seed=0):
+        network = snap.LoadEdgeList(snap.PNGraph, data_path)
+        residual_network = snap.LoadEdgeList(snap.PNGraph, data_path)
 
-        self.removed_edges = set()
-        self.kept_edges = set()
+        removed_edges = set()
+        kept_edges = set()
         # get the number of the edges to remove
         n_edges_to_keep = int(
             (residual_ratio) * residual_network.GetEdges())
@@ -95,9 +97,9 @@ class Dataset(object):
             residual_network.AddNode(node.GetId())
 
         # we add the edges from the spanning tree
-        self.kept_edges = set()
+        kept_edges = set()
         for edge in BfsTree.Edges():
-            self.kept_edges.add(edge.GetId())
+            kept_edges.add(edge.GetId())
             residual_network.AddEdge(*edge.GetId())
 
         # we shuffle the index to have access to a random permutation
@@ -107,24 +109,24 @@ class Dataset(object):
 
         # we use a set for O(1) addition and check operation
         indexes_to_keep = set(
-            shuffled_indexes[:n_edges_to_keep-len(self.kept_edges)])
+            shuffled_indexes[:n_edges_to_keep-len(kept_edges)])
 
         for i, edge in enumerate(network.Edges()):
             edge_id = edge.GetId()
             if i in indexes_to_keep:
                 # if the edge is already added we will add another edge from the permutation
-                if edge_id in self.kept_edges:
+                if edge_id in kept_edges:
                     # it is very unlikely that there is no index higher than the current index 
                     # left in the permutation
-                    for new_index_to_keep in shuffled_indexes[n_edges_to_keep-len(self.kept_edges):]:
+                    for new_index_to_keep in shuffled_indexes[n_edges_to_keep-len(kept_edges):]:
                         if new_index_to_keep > i: #need to be higher than i in order to be added later
                             indexes_to_keep.add(new_index_to_keep)
                             break
                 else:
-                    self.kept_edges.add(edge_id)
+                    kept_edges.add(edge_id)
                     residual_network.AddEdge(*edge_id)
             else:
-                self.removed_edges.add(edge_id)
+                removed_edges.add(edge_id)
 
         residual_network.Defrag()
         print('keep ratio : {}'.format(residual_network.GetEdges()/network.GetEdges()))
@@ -134,10 +136,10 @@ class Dataset(object):
         print('time taken {} to generate the residual network'.format(
             time.time()-start))
 
-        n_train = 2 * len(self.kept_edges)
-        n_test = 2 * len(self.removed_edges)
+        n_train = 2 * len(kept_edges)
+        n_test = 2 * len(removed_edges)
 
-        self.fictive_edges = []
+        fictive_edges = []
 
         print('generating random fictive edges')
         for i in tqdm.tqdm(range(n_train//2 + n_test//2)):
@@ -146,19 +148,21 @@ class Dataset(object):
             while network.IsEdge(Id_src, Id_dst) or Id_dst == Id_src:
                 Id_src = network.GetRndNId(Rnd)
                 Id_dst = network.GetRndNId(Rnd)
-            self.fictive_edges.append((Id_src, Id_dst))
+            fictive_edges.append((Id_src, Id_dst))
 
         self.x_train, self.y_train = [], []
         self.x_test, self.y_test = [], []
 
-        self.x_test += list(self.removed_edges)
+        self.x_test += list(removed_edges)
         self.y_test += len(self.x_test) * [1]
-        self.x_test += self.fictive_edges[:n_test//2]
+        self.x_test += fictive_edges[:n_test//2]
         self.y_test += n_test * [0]
+        self.x_test = np.asarray(self.x_test)
+        self.y_test = np.asarray(self.y_test)
 
-        self.x_train += list(self.kept_edges)
+        self.x_train += list(kept_edges)
         self.y_train += len(self.x_train) * [1]
-        self.x_train += self.fictive_edges[n_test//2:]
+        self.x_train += fictive_edges[n_test//2:]
         self.y_train += n_train//2 * [0]
 
         self.x_train, self.y_train = np.asarray(
@@ -170,7 +174,52 @@ class Dataset(object):
 
     def get_split(self):
         return self.x_train, self.y_train, self.x_test, self.y_test
+    
+    def embed_network(self, seed, algorithm_name,num_walks_per_node, walk_length, 
+                        n_batch, precompute, path):
+        '''
+        methods that embed the network with a given algorithm, the network is replaced by its embedding to save memory
+        '''
+        if algorithm_name == 'node2vec':
+            # if precompute we try to load the stored embedding 
+            # or the stored random walks
+            if precompute :
+                try:
+                    model = embedding.Node2vec(path,n_batch)
+                    model.load_embedding()
+                except:
+                    try : # try to load the walk
+                        model = embedding.Node2vec(path,n_batch)
+                        model.fit()
+                    except:    
+                        model = embedding.Node2vec(self.residual_network, n_batch=n_batch, path=path)
+                        model.compute_walks(walk_length=walk_length, num_walks = num_walks_per_node, n_batch=n_batch)
+                        model.fit()
+            else : 
+                model = embedding.Node2vec(self.residual_network, n_batch=n_batch, path=path)
+                model.compute_walks(walk_length=walk_length, num_walks = num_walks_per_node, n_batch=n_batch)
+                model.fit()
+        else: 
+            raise NotImplementedError('embedding is not implemented')
+        model.save_embedding()
 
+        # we replace the network by its embedding to save memory
+        self.residual_network = model.word_vectors
+        self.embedded = True
+
+    def embed_edges(self):
+        if not self.embedded:
+            raise ValueError('First embed the network')
+        else:
+            self.x_train = self.x_train.tolist()
+            self.x_test = self.x_test.tolist()
+            for i in tqdm.tqdm(range(len(self.x_train))):
+                edge = np.asarray(self.x_train[i])
+                self.x_train[i] = self.residual_network[edge[0]] * self.residual_network[edge[1]]
+            for i in tqdm.tqdm(range(len(self.x_test))):
+                edge = np.asarray(self.x_test[i])
+                self.x_test[i] = self.residual_network[edge[0]] * self.residual_network[edge[1]]
+                    
 if __name__ == '__main__':
     
     if not DEBUG:

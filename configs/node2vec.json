@@ -1,0 +1,16 @@
+{   "seed":0,
+    "dataset": {
+        "seed": 0,
+        "data_path": "data/amazon-meta.txt",
+        "residual_ratio": 0.5
+    },
+    "embedding": {
+        "seed" : 0,
+        "algorithm_name": "node2vec",
+        "num_walks_per_node": 80,
+        "walk_length": 10,
+        "n_batch": 18,
+        "precompute": true, 
+        "path": "models/node2vec"
+    }
+}
