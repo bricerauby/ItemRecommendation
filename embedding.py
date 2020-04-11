@@ -5,12 +5,13 @@ import gensim
 import networkx
 import node2vec
 import time 
-
+import tqdm
 DEBUG = True
 
 class Embedding():
     def __init__(self, graph=None):
         self.graph = graph
+        self.num_nodes= 410236
         self.word_vectors = None
         self.vectors_path = None
         self.walks = None
@@ -41,12 +42,13 @@ class Embedding():
 
 
 class Node2vec(Embedding):
-    def __init__(self, graph=None):
+    def __init__(self, graph=None, n_batch=8):
         Embedding.__init__(self,graph)
         self.graph = graph
         self.walks = None
         self.embedding = None
         self.set_paths('node2vec')
+        self.n_batch=n_batch
 
     def compute_walks(self, n_batch=0, walk_length=10, num_walks=80, p=1, q=1):
 
@@ -59,43 +61,48 @@ class Node2vec(Embedding):
             for batch_index in range(n_batch):
                 self.walks_path = 'node2vec_embedding_batch_{}.json'.format(batch_index)
                 self.compute_walks(walk_length=walk_length, num_walks=num_walks//n_batch, p=p, q=q)
-        # need to be done at the end
+        # need to be done at the end otherwise intermediate call will set n_batch to 0
         self.n_batch=n_batch
     
-    def load_walks(self):
+    def load_walks(self, batch_index=0):
         if self.n_batch==0: 
             super().load_walks()
-        else: 
-            walks=[]
-            for batch_index in range(self.n_batch):
-                self.walks_path = 'node2vec_embedding_batch_{}.json'.format(batch_index)
-                super().load_walks()
-                walks += self.walks
-            self.walks = walks
+        else:
+            self.walks_path = 'node2vec_embedding_batch_{}.json'.format(batch_index)
+            super().load_walks()
 
 
     def fit(self, window=10, embedding_size=128):
-        if self.walks is None: 
-            raise ValueError('walks is none') 
-        self.word_vectors = gensim.models.Word2Vec(self.walks, size=embedding_size, min_count=0, sg=1, workers=4, window=window).wv
+        if self.n_batch==0:
+            if self.walks is None: 
+                raise ValueError('walks is none') 
+            self.word_vectors = gensim.models.Word2Vec(self.walks, size=embedding_size, min_count=0, sg=1, workers=4, window=window).wv
+
+        else : 
+            for batch_index in tqdm.tqdm(range(1, self.n_batch)):          
+                self.load_walks(batch_index=batch_index)
+                if batch_index == 0 : 
+                    model = gensim.models.Word2Vec(self.walks, size=embedding_size, min_count=0, sg=1, workers=4, window=window)
+                else: 
+                    model.train(self.walks, epochs=model.iter,total_words=self.num_nodes)
+            self.word_vectors = model.wv
         self.word_vectors = dict(zip(self.word_vectors.index2word, self.word_vectors.vectors.tolist()))
-
-
-    
 
 
 if __name__ == "__main__":
     from dataset import Dataset
     if DEBUG:
-        embedding = Node2vec(Dataset().residual_network)
-        embedding.compute_walks(n_batch=8)
-        embedding.load_walks()
-        
+        embedding = Node2vec(n_batch=8)
+        # embedding = Node2vec(Dataset().residual_network)
+        # embedding.compute_walks(n_batch=8)
+        # embedding.load_walks()
+
     else:
         dataset = Dataset()
         embedding = Node2vec(Dataset().residual_network)
         embedding.compute_walks()
         embedding.save_walks()
+
     embedding.fit()
     embedding.save_embedding()
     
