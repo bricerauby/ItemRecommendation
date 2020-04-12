@@ -1,5 +1,5 @@
-snap-stanford
 numpy
 tqdm
 node2vec
 scikit-learn
+torch
