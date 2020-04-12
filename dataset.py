@@ -178,15 +178,12 @@ class Dataset(object):
             self.x_train = self.x_train.tolist()
             self.x_test = self.x_test.tolist()
             for i in tqdm.tqdm(range(len(self.x_train))):
-                edge = np.asarray(self.x_train[i])
-                self.x_train[i] = self.residual_network[edge[0]] * \
-                    self.residual_network[edge[1]]
+                edge = self.x_train[i]
+                self.x_train[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
             for i in tqdm.tqdm(range(len(self.x_test))):
-                edge = np.asarray(self.x_test[i])
-                self.x_test[i] = self.residual_network[edge[0]] * \
-                    self.residual_network[edge[1]]
-
-
+                edge = self.x_test[i]
+                self.x_test[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
+                    
 if __name__ == '__main__':
 
     if not DEBUG:

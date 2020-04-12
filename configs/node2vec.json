@@ -9,8 +9,13 @@
         "algorithm_name": "node2vec",
         "num_walks_per_node": 80,
         "walk_length": 10,
-        "n_batch": 18,
+        "n_batch": 8,
         "precompute": true, 
         "path": "models/node2vec"
+    },
+    "classifier" :{
+        "seed" : 0,
+        "classifier": "log",
+        "n_batch": 10
     }
 }

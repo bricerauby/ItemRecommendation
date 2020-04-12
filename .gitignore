@@ -4,3 +4,8 @@ data/*
 .mypy_cache/*
 __pycache__/*
 models/*
+main.ipynb
+.ipynb_checkpoints/*
+line_model_weights
+random_walk
+loss_evolution

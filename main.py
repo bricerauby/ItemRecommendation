@@ -4,7 +4,6 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from dataset import Dataset
-from graph import Graph
 
 
 DEBUG = True
@@ -22,7 +21,10 @@ dataset = Dataset(**config["dataset"])
 
 # we perform the embedding of the nodes in the network using the residual network 
 dataset.embed_network(**config['embedding'])
-dataset.embed_edges()
+
+
+for batch_index in tqdm.tqdm(range(n_batch)):
+    dataset.embed_edges()
 
 # we get the embeddings for both set
 if DEBUG : 
