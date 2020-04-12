@@ -2,12 +2,10 @@ import urllib.request
 import gzip
 import shutil
 import os
-from collections import deque
 import time
 
 import tqdm
 import numpy as np
-import snap
 import networkx
 import tempfile
 
@@ -15,12 +13,6 @@ import embedding
 
 DEBUG = True
 
-def snap2nx(snap_graph):
-    fo = tempfile.NamedTemporaryFile()		
-    snap.SaveEdgeList(snap_graph, fo.name, "Save as tab-separated list of edges")
-    nx_graph = networkx.read_edgelist(fo.name, create_using=networkx.MultiGraph)
-    fo.close()
-    return nx_graph
 
 class Dataset(object):
     '''
@@ -45,93 +37,50 @@ class Dataset(object):
     x_test : the edges in the test set 
     y_test : the labels for the test set 0 is fictive edge 1 is existing edge
     '''
-    def __init__(self, data_path='data/amazon-meta.txt', residual_ratio=0.5, seed=0):
-        network = snap.LoadEdgeList(snap.PNGraph, data_path)
-        residual_network = snap.LoadEdgeList(snap.PNGraph, data_path)
 
+    def __init__(self, data_path='data/amazon-meta.txt', residual_ratio=0.5, seed=0):
+        network = networkx.read_edgelist(data_path)
         removed_edges = set()
         kept_edges = set()
         # get the number of the edges to remove
         n_edges_to_keep = int(
-            (residual_ratio) * residual_network.GetEdges())
-        n_edges_to_remove = residual_network.GetEdges() - n_edges_to_keep
+            (residual_ratio) * network.number_of_edges())
+        n_edges_to_remove = network.number_of_edges() - n_edges_to_keep
 
         # set the seed
         np.random.seed(seed)
-        Rnd = snap.TRnd(seed)
-        Rnd.Randomize()
 
         print('removing edges randomly')
         start = time.time()
 
-        # we get a connected graph with less edges than what we need to keep
-        # then we randomly re-add edges to reach the correct residual ratio
+        # taking the minimal spanning tree  and adding edges is a way to enforce the connectivity of the  residual graph
+        print('searching the minimal spanning tree')
+        residual_network = networkx.algorithms.tree.minimum_spanning_edges(
+            network, data=False, keys=False)
+        residual_network = list(residual_network)
+        n_edges = len(residual_network)
+        is_acceptable = n_edges < network.number_of_edges() * residual_ratio
 
-        # Make sure that the tree has not too many edges already, it is very
-        # likely to do only one iteration (it is very expensive otherwise)
-        min_n_edges, min_node_id = network.GetEdges(), None
-        for i in range(network.GetNodes()):
-            node_id = residual_network.GetRndNId()
-            BfsTree = snap.GetBfsTree(network, node_id, True, True)
-            n_edges = BfsTree.GetEdges()
-            is_acceptable = n_edges < network.GetEdges() * residual_ratio
-            if is_acceptable:
-                break
-            elif min_n_edges > n_edges:
-                min_node_id = node_id
-                min_n_edges = n_edges
+        if not is_acceptable:
+            print(
+                'minimum spanning tree has more edge than required by the residual ratio')
 
-            # we remove the node in order to sample without replacement
-            residual_network.DelNode(node_id)
+        print('removing unessential edges from the network')
+        # we remove the edges that have already been added to the residual network
+        network.remove_edges_from(residual_network)
+        network = list(network.edges())
+        network = np.random.permutation(network)
+        removed_edges = network[:n_edges_to_remove]
 
-        if is_acceptable:
-            print('small enough spanning tree was found in {} iteration'.format(i+1))
-        else:
-            BfsTree = snap.GetBfsTree(network, min_node_id, True, True)
-            print('small enough spanning tree was not found, the smallest had {} edges'.format(
-                min_n_edges))
+        residual_network = networkx.Graph(residual_network)
+        # we add to the residual network the edges left in network (ie not in the spanning tree not in remove)
+        residual_network.add_edges_from(network[n_edges_to_remove:])
+        kept_edges = set(residual_network.edges())
 
-        # Keep only the node from the network we will add the edges
-        residual_network.Clr()
-        for node in network.Nodes():
-            residual_network.AddNode(node.GetId())
+        network = networkx.Graph(removed_edges.tolist())
 
-        # we add the edges from the spanning tree
-        kept_edges = set()
-        for edge in BfsTree.Edges():
-            kept_edges.add(edge.GetId())
-            residual_network.AddEdge(*edge.GetId())
-
-        # we shuffle the index to have access to a random permutation
-        # of the edges while iterating over the edges
-        shuffled_indexes = np.random.permutation(
-            np.arange(network.GetEdges()))
-
-        # we use a set for O(1) addition and check operation
-        indexes_to_keep = set(
-            shuffled_indexes[:n_edges_to_keep-len(kept_edges)])
-
-        for i, edge in enumerate(network.Edges()):
-            edge_id = edge.GetId()
-            if i in indexes_to_keep:
-                # if the edge is already added we will add another edge from the permutation
-                if edge_id in kept_edges:
-                    # it is very unlikely that there is no index higher than the current index 
-                    # left in the permutation
-                    for new_index_to_keep in shuffled_indexes[n_edges_to_keep-len(kept_edges):]:
-                        if new_index_to_keep > i: #need to be higher than i in order to be added later
-                            indexes_to_keep.add(new_index_to_keep)
-                            break
-                else:
-                    kept_edges.add(edge_id)
-                    residual_network.AddEdge(*edge_id)
-            else:
-                removed_edges.add(edge_id)
-
-        residual_network.Defrag()
-        print('keep ratio : {}'.format(residual_network.GetEdges()/network.GetEdges()))
         print('the network is connected : {}'.format(
-            snap.IsWeaklyConn(residual_network)))
+            networkx.is_connected(residual_network)))
 
         print('time taken {} to generate the residual network'.format(
             time.time()-start))
@@ -142,12 +91,23 @@ class Dataset(object):
         fictive_edges = []
 
         print('generating random fictive edges')
+        nodes = list(residual_network.nodes())
         for i in tqdm.tqdm(range(n_train//2 + n_test//2)):
-            Id_src = network.GetRndNId(Rnd)
-            Id_dst = network.GetRndNId(Rnd)
-            while network.IsEdge(Id_src, Id_dst) or Id_dst == Id_src:
-                Id_src = network.GetRndNId(Rnd)
-                Id_dst = network.GetRndNId(Rnd)
+            Id_src = nodes[np.random.randint(len(nodes))]
+            Id_dst = nodes[np.random.randint(len(nodes))]
+            not_acceptable = Id_dst == Id_src
+            not_acceptable = not_acceptable or residual_network.has_edge(
+                Id_src, Id_dst)
+            not_acceptable = not_acceptable or network.has_edge(Id_src, Id_dst)
+            while not_acceptable:
+                Id_src = nodes[np.random.randint(len(nodes))]
+                Id_dst = nodes[np.random.randint(len(nodes))]
+                not_acceptable = Id_dst == Id_src
+                not_acceptable = not_acceptable or residual_network.has_edge(
+                    Id_src, Id_dst)
+                not_acceptable = not_acceptable or network.has_edge(
+                    Id_src, Id_dst)
+
             fictive_edges.append((Id_src, Id_dst))
 
         self.x_train, self.y_train = [], []
@@ -170,36 +130,40 @@ class Dataset(object):
         shuffled_indexes = np.random.permutation(n_train)
         self.x_train = self.x_train[shuffled_indexes]
         self.y_train = self.y_train[shuffled_indexes]
-        self.residual_network = snap2nx(residual_network)
+        self.residual_network = residual_network
 
     def get_split(self):
         return self.x_train, self.y_train, self.x_test, self.y_test
-    
-    def embed_network(self, seed, algorithm_name,num_walks_per_node, walk_length, 
-                        n_batch, precompute, path):
+
+    def embed_network(self, seed, algorithm_name, num_walks_per_node, walk_length,
+                      n_batch, precompute, path):
         '''
         methods that embed the network with a given algorithm, the network is replaced by its embedding to save memory
         '''
         if algorithm_name == 'node2vec':
-            # if precompute we try to load the stored embedding 
+            # if precompute we try to load the stored embedding
             # or the stored random walks
-            if precompute :
+            if precompute:
                 try:
-                    model = embedding.Node2vec(path,n_batch)
+                    model = embedding.Node2vec(path, n_batch)
                     model.load_embedding()
                 except:
-                    try : # try to load the walk
-                        model = embedding.Node2vec(path,n_batch)
+                    try:  # try to load the walk
+                        model = embedding.Node2vec(path, n_batch)
                         model.fit()
-                    except:    
-                        model = embedding.Node2vec(self.residual_network, n_batch=n_batch, path=path)
-                        model.compute_walks(walk_length=walk_length, num_walks = num_walks_per_node, n_batch=n_batch)
+                    except:
+                        model = embedding.Node2vec(
+                            self.residual_network, n_batch=n_batch, path=path)
+                        model.compute_walks(
+                            walk_length=walk_length, num_walks=num_walks_per_node, n_batch=n_batch)
                         model.fit()
-            else : 
-                model = embedding.Node2vec(self.residual_network, n_batch=n_batch, path=path)
-                model.compute_walks(walk_length=walk_length, num_walks = num_walks_per_node, n_batch=n_batch)
+            else:
+                model = embedding.Node2vec(
+                    self.residual_network, n_batch=n_batch, path=path)
+                model.compute_walks(walk_length=walk_length,
+                                    num_walks=num_walks_per_node, n_batch=n_batch)
                 model.fit()
-        else: 
+        else:
             raise NotImplementedError('embedding is not implemented')
         model.save_embedding()
 
@@ -215,13 +179,16 @@ class Dataset(object):
             self.x_test = self.x_test.tolist()
             for i in tqdm.tqdm(range(len(self.x_train))):
                 edge = np.asarray(self.x_train[i])
-                self.x_train[i] = self.residual_network[edge[0]] * self.residual_network[edge[1]]
+                self.x_train[i] = self.residual_network[edge[0]] * \
+                    self.residual_network[edge[1]]
             for i in tqdm.tqdm(range(len(self.x_test))):
                 edge = np.asarray(self.x_test[i])
-                self.x_test[i] = self.residual_network[edge[0]] * self.residual_network[edge[1]]
-                    
+                self.x_test[i] = self.residual_network[edge[0]] * \
+                    self.residual_network[edge[1]]
+
+
 if __name__ == '__main__':
-    
+
     if not DEBUG:
         url = 'https://snap.stanford.edu/data/amazon0505.txt.gz'
 
@@ -237,5 +204,5 @@ if __name__ == '__main__':
         with open('data/amazon-meta.txt', 'wb') as decompressed_file:
             with gzip.open('data/amazon-meta.txt.gz', 'rb') as compressed_file:
                 shutil.copyfileobj(compressed_file, decompressed_file)
-    else: 
+    else:
         dataset = Dataset()
