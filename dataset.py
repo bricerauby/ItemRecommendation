@@ -163,6 +163,15 @@ class Dataset(object):
                 model.compute_walks(walk_length=walk_length,
                                     num_walks=num_walks_per_node, n_batch=n_batch)
                 model.fit()
+                
+        elif algorithm_name == 'deep_walk':
+            model = DeepWalk(graph=self.residual_network, walk_length=10, 
+                         num_walks=80, workers=6)
+            model.generate_walks()
+            model.train(iter = 10, workers=6)
+        elif algorithm_name == 'line' :
+            model = Line_model(graph = self.residual_network)
+            model.train()
         else:
             raise NotImplementedError('embedding is not implemented')
         model.save_embedding()

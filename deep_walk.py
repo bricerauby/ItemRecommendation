@@ -8,6 +8,7 @@ from tqdm import trange
 from dataset import Dataset
 import tempfile
 import networkx
+import json
 
 def partition_num(num, workers):
     if num % workers == 0:
@@ -18,12 +19,9 @@ def partition_num(num, workers):
 class RandomWalker:
     def __init__(self, G):
         self.G = G
-
     def deepwalk_walk(self, walk_length, 
                       start_node):
-
         walk = [start_node]
-
         while len(walk) < walk_length:
             cur = walk[-1]
             cur_nbrs = list(self.G.neighbors(cur))
@@ -35,17 +33,12 @@ class RandomWalker:
 
     def simulate_walks(self, num_walks, walk_length, 
                        workers=1, verbose=0):
-
         G = self.G
-
         nodes = list(G.nodes())
-
         results = Parallel(n_jobs=workers, verbose=verbose, )(
             delayed(self._simulate_walks)(nodes, num, walk_length) for num in
             partition_num(num_walks, workers))
-
         walks = list(itertools.chain(*results))
-
         return walks
 
     def _simulate_walks(self, nodes, num_walks, walk_length,):
@@ -59,7 +52,7 @@ class RandomWalker:
     
 class DeepWalk:
     def __init__(self, graph, walk_length, 
-                 num_walks, workers=1):
+                 num_walks, vectors_path = 'deep_walk.json', workers=1):
 
         self.graph = graph
         self.w2v_model = None
@@ -69,7 +62,9 @@ class DeepWalk:
         self.workers = workers
         self.walker = RandomWalker(
             graph)
+        self.vectors_path = vectors_path
     def generate_walks(self, verbose=10) :
+        print('Generating walks...')
         self.sentences = self.walker.simulate_walks(
             num_walks=self.num_walks, walk_length=self.walk_length, 
             workers=self.workers, verbose=verbose)
@@ -85,29 +80,37 @@ class DeepWalk:
         kwargs["workers"] = workers
         kwargs["window"] = window_size
         kwargs["iter"] = iter
-
         print("Learning embedding vectors...")
         model = Word2Vec(**kwargs)
         print("Learning embedding vectors done!")
-
         self.w2v_model = model
+        self.word_vectors = {}
+        for elt in self.w2v_model.wv.vocab :
+            self.word_vectors[elt] = list(self.w2v_model.wv[elt].astype('float'))
         return model
-
-    def get_embeddings(self, edges):
-        result = np.zeros(len(edges), 128)
-        for i, (elt1, elt2) in enumerate(edges) :
-            emb_1 = self.w2v_model.wv[elt1]
-            emb_2 = self.w2v_model.wv[elt2]
-            emb = np.multiply(emb_1, emb_2)
-            result[i] = emb
+    
+    def save_embedding(self):
+        with open(self.vectors_path, 'w') as f:
+            json.dump(self.word_vectors, f)
             
+    def load_embedding(self):
+        with open(self.vectors_path, 'r') as f:
+            self.word_vectors = json.load(f)
+            
+    def get_embeddings(self, edges):
+        result = np.zeros((len(edges), 128))
+        for i, (elt1, elt2) in enumerate(edges) :
+            emb_1 = self.w2v_model.wv[str(elt1)]
+            emb_2 = self.w2v_model.wv[str(elt2)]
+            emb = np.multiply(emb_1, emb_2)            
         return result
     
 if __name__ == '__main__' :
-    graph_nx = Dataset().residual_network
-    deep_walk = DeepWalk(graph=graph_nx, walk_length=10, 
-                         num_walks=80, workers=4)
+#     graph_nx = Dataset().residual_network
+    deep_walk = DeepWalk(graph=Dataset().residual_network, walk_length=2, 
+                         num_walks=1, workers=2)
     deep_walk.generate_walks()
-    deep_walk.train(iter = 5, workers=4)
-    deep_walk.w2v_model.wv.save_word2vec_format('random_walk')
-    #edges_emb = deep_walk.get_embeddings(graph_nx.edges())
+    deep_walk.train(iter = 1, workers=2)
+    deep_walk.save_embedding()
+#     deep_walk.w2v_model.wv.save_word2vec_format('random_walk')
+#     edges_emb = deep_walk.get_embeddings(graph_nx.edges())
