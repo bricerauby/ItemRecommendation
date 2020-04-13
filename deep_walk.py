@@ -5,7 +5,6 @@ import numpy as np
 from joblib import Parallel, delayed
 from gensim.models import Word2Vec
 from tqdm import trange
-from dataset import Dataset
 import tempfile
 import networkx
 import json
@@ -107,6 +106,7 @@ class DeepWalk:
     
 if __name__ == '__main__' :
 #     graph_nx = Dataset().residual_network
+    from dataset import Dataset
     deep_walk = DeepWalk(graph=Dataset().residual_network, walk_length=2, 
                          num_walks=1, workers=2)
     deep_walk.generate_walks()

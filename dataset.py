@@ -10,6 +10,8 @@ import networkx
 import tempfile
 
 import embedding
+from deep_walk import DeepWalk
+from line import Line
 
 DEBUG = True
 

@@ -10,7 +10,6 @@ import numpy as np
 import collections
 from tqdm import tqdm
 import json
-from dataset import Dataset
 
 args = {}
 args["graph_path"] = 'data/amazon-meta.txt'
@@ -246,7 +245,7 @@ if __name__ == "__main__":
 #     args["epochs"] = 1
 #     args["learning_rate"] = 0.025  # As starting value in paper
 #     args["negativepower"] = 0.75 
-    
+    from dataset import Dataset
     model = Line_model(graph = Dataset().residual_network, args=args)
     model.train()
     print("Saving the embedding...")
