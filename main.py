@@ -22,16 +22,18 @@ def train_by_batch(clf, dataset, nb_epochs) :
             clf.partial_fit(x_batch, y_batch, classes = np.unique(y_train)) 
             y_pred =  clf.predict_proba(x_batch)[:, 0]
             loss.append(log_loss(y_batch, y_pred))
-        print("epoch {} loss {}".format(epoch, np.mean(loss)))
     return clf, loss
 
-def test_by_batch(clf, dataset):
-    index_test = np.arange(len(dataset.x_test))
+def test_by_batch(clf, dataset, split = 'test'):
+    if split == 'train':
+        index_test = np.arange(len(dataset.x_train))
+    else: 
+        index_test = np.arange(len(dataset.x_test))
     y_pred = np.zeros(len(index_test))
     auc = []
     for i in tqdm.tqdm(range((len(index_test)// batch_size_test) + 1)):
         b_indexes = index_test[i * batch_size_test:(i + 1) * batch_size_test]
-        x_batch = dataset.embed_edges(b_indexes, train=False)
+        x_batch = dataset.embed_edges(b_indexes, train=(split == 'train'))
         test_pred_prob = clf.predict_proba(x_batch)[:, 0]
         y_pred[b_indexes] = test_pred_prob
     return y_pred
@@ -61,11 +63,16 @@ if __name__ == "__main__":
 # test_pred_prob = clf.predict_proba(dataset.x_test)
 # print('auc score on test set', roc_auc_score(dataset.y_test, test_pred_prob))
 
-    clf = SGDClassifier(loss ='log', warm_start=True, learning_rate='constant', eta0=1e-4)
+    clf = SGDClassifier(loss ='log', warm_start=True, learning_rate='constant', eta0=1e-10)
     batch_size_train = 10000
     batch_size_test = 10000
 
-
-    clf, _ = train_by_batch(clf, dataset, nb_epochs=10)
-    y_pred = test_by_batch(clf, dataset)
-    print("Auc score on test set", roc_auc_score(dataset.y_test, y_pred))
+    for i in range(10):
+        clf, loss = train_by_batch(clf, dataset, nb_epochs=1)
+        y_pred = test_by_batch(clf, dataset)
+        print("epoch {} loss {}".format(i, np.mean(loss)))
+        print("Auc score on test set", roc_auc_score(dataset.y_test, y_pred))
+        print(y_pred.min(), y_pred.max())
+        y_pred = test_by_batch(clf, dataset, split='train')
+        print("Auc score on train set", roc_auc_score(dataset.y_train, y_pred))
+        print(y_pred.min(), y_pred.max())

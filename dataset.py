@@ -172,12 +172,14 @@ class Dataset(object):
                     try:  # try to load the walk
                         model = embedding.Node2vec(path, n_batch)
                         model.fit()
+                        model.save_embedding()
                     except:
                         model = embedding.Node2vec(
                             self.residual_network, n_batch=n_batch, path=path)
                         model.compute_walks(
                             walk_length=walk_length, num_walks=num_walks_per_node, n_batch=n_batch)
                         model.fit()
+                        model.save_embedding()
             else:
                 model = embedding.Node2vec(
                     self.residual_network, n_batch=n_batch, path=path)
@@ -196,7 +198,7 @@ class Dataset(object):
             model.train()
         else:
             raise NotImplementedError('embedding is not implemented')
-        model.save_embedding()
+        
 
         # we replace the network by its embedding to save memory
         self.residual_network = model.word_vectors
