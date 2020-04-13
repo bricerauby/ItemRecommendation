@@ -1,6 +1,7 @@
 import json 
 import argparse
 
+import tqdm
 import numpy as np
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import roc_auc_score, log_loss
@@ -21,6 +22,7 @@ def train_by_batch(clf, dataset, nb_epochs) :
             clf.partial_fit(x_batch, y_batch, classes = np.unique(y_train)) 
             y_pred =  clf.predict_proba(x_batch)[:, 0]
             loss.append(log_loss(y_batch, y_pred))
+        print("epoch {} loss {}".format(epoch, np.mean(loss)))
     return clf, loss
 
 def test_by_batch(clf, dataset):
@@ -40,15 +42,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_path', type=str, required = True, help='path to the config_file')
-    args = parser.parse_args()
+    args = parser.parse_args('--config_path configs/node2vec.json'.split())
     config_path = args.config_path
 
     with open(config_path, 'r') as f: 
         config = json.load(f)
     SEED = config['seed']
     # we load the dataset and perform edge extraction to get the train test split
+    print('loading dataset ...')
     dataset = Dataset(**config["dataset"])
-
+    print('embedding network ...')
     dataset.embed_network(**config['embedding'])
 
 # we do the classification
@@ -58,7 +61,7 @@ if __name__ == "__main__":
 # test_pred_prob = clf.predict_proba(dataset.x_test)
 # print('auc score on test set', roc_auc_score(dataset.y_test, test_pred_prob))
 
-    clf = SGDClassifier(loss ='log')
+    clf = SGDClassifier(loss ='log', warm_start=True, learning_rate='constant', eta0=1e-4)
     batch_size_train = 10000
     batch_size_test = 10000
 
