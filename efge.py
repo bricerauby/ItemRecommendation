@@ -30,7 +30,7 @@ class Efge(Embedding):
             os.makedirs(name)
         self.vectors_path = '{}/embedding.json'.format(name)
         # efge and node2vec share the same walks
-        self.walks_path = 'model/node2vec/walks.json'
+        self.walks_path = 'models/node2vec/walks.json'
 
     def update_efge_bern(self, learning_rate, center_id, context_ids, in_neighborhood):
         context_embedding = self.context_embedding[context_ids]
