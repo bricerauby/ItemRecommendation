@@ -11,6 +11,8 @@ import networkx
 import tempfile
 
 import embedding
+from deep_walk import DeepWalk
+from line import Line
 
 DEBUG = True
 
@@ -18,7 +20,6 @@ DEBUG = True
 class Dataset(object):
     '''
     Dataset contains the network, the residual network, the train set and the test set
-
     Parameters
     ----------
     data_path : str
@@ -27,7 +28,6 @@ class Dataset(object):
         The proportion of edges to keep in the residual network 
     seed : int
         Seed for reproductibility of the dataset generation
-
     Attributes
     ----------
     residual_network : networkx graph representation of the residual network
@@ -41,12 +41,15 @@ class Dataset(object):
 
     def __init__(self, data_path='data/amazon-meta.txt', residual_ratio=0.5, seed=0, precompute=False):
         if precompute:
-            networkx.read_edgelist(self.residual_network, 'data/residual_network.txt')
+            self.residual_network = networkx.read_edgelist( 'data/residual_network.txt')
             with open('data/train.json', 'r') as f:
-                json.dump({'x_train':self.x_train.tolist(), 'y_train': self.y_train.tolist()}, f)
+                train = json.load(f)
+            self.x_train = np.asarray(train['x_train'])
+            self.y_train = np.asarray(train['y_train'])
             with open('data/test.json', 'r') as f:
-                json.load({'x_test':self.x_test.tolist(), 'y_test': self.y_test.tolist()}, f)
-
+                test = json.load(f)
+            self.x_test = np.asarray(test['x_test'])
+            self.y_test = np.asarray(test['y_test'])
 
         else:
             network = networkx.read_edgelist(data_path)
@@ -167,12 +170,14 @@ class Dataset(object):
                     try:  # try to load the walk
                         model = embedding.Node2vec(path, n_batch)
                         model.fit()
+                        model.save_embedding()
                     except:
                         model = embedding.Node2vec(
                             self.residual_network, n_batch=n_batch, path=path)
                         model.compute_walks(
                             walk_length=walk_length, num_walks=num_walks_per_node, n_batch=n_batch)
                         model.fit()
+                        model.save_embedding()
             else:
                 model = embedding.Node2vec(
                     self.residual_network, n_batch=n_batch, path=path)
@@ -191,7 +196,7 @@ class Dataset(object):
             model.train()
         else:
             raise NotImplementedError('embedding is not implemented')
-        model.save_embedding()
+        
 
         # we replace the network by its embedding to save memory
         self.residual_network = model.word_vectors
