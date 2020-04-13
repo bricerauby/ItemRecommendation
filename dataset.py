@@ -11,6 +11,8 @@ import networkx
 import tempfile
 
 import embedding
+from deep_walk import DeepWalk
+from line import Line
 
 DEBUG = True
 
@@ -41,12 +43,15 @@ class Dataset(object):
 
     def __init__(self, data_path='data/amazon-meta.txt', residual_ratio=0.5, seed=0, precompute=False):
         if precompute:
-            networkx.read_edgelist(self.residual_network, 'data/residual_network.txt')
+            self.residual_network = networkx.read_edgelist( 'data/residual_network.txt')
             with open('data/train.json', 'r') as f:
-                json.dump({'x_train':self.x_train.tolist(), 'y_train': self.y_train.tolist()}, f)
+                train = json.load(f)
+            self.x_train = np.asarray(train['x_train'])
+            self.y_train = np.asarray(train['y_train'])
             with open('data/test.json', 'r') as f:
-                json.load({'x_test':self.x_test.tolist(), 'y_test': self.y_test.tolist()}, f)
-
+                test = json.load(f)
+            self.x_test = np.asarray(test['x_test'])
+            self.y_test = np.asarray(test['y_test'])
 
         else:
             network = networkx.read_edgelist(data_path)
@@ -126,7 +131,7 @@ class Dataset(object):
             self.x_test += list(removed_edges)
             self.y_test += len(self.x_test) * [1]
             self.x_test += fictive_edges[:n_test//2]
-            self.y_test += n_test * [0]
+            self.y_test += n_test//2 * [0]
             self.x_test = np.asarray(self.x_test)
             self.y_test = np.asarray(self.y_test)
 
