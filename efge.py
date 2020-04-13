@@ -42,6 +42,25 @@ class Efge(Embedding):
         # update the center embedding 
         self.center_embedding[center_id] += - learning_rate * np.sum(grad * context_embedding, axis=0) 
 
+    def update_efge_poisson(self, learning_rate, center_id, context_ids, in_neighborhood):
+        context_embedding = self.context_embedding[context_ids]
+        center_embedding = np.expand_dims(self.center_embedding[center_id], axis=0)
+        eta = np.sum(center_embedding * context_embedding, axis=-1)
+        grad = np.expand_dims(np.exp(eta) - in_neighborhood,axis=-1)
+        # update the context_embedding
+        self.context_embedding[context_ids] += - learning_rate * grad * center_embedding
+        # update the center embedding 
+        self.center_embedding[center_id] += - learning_rate * np.sum(grad * context_embedding, axis=0) 
+        
+    def update_efge_norm(self, learning_rate, center_id, context_ids, in_neighborhood, std_dev=1.):
+        context_embedding = self.context_embedding[context_ids]
+        center_embedding = np.expand_dims(self.center_embedding[center_id], axis=0)
+        eta = np.sum(center_embedding * context_embedding, axis=-1)
+        grad = np.expand_dims(-np.exp(-2*eta) + np.exp(-eta)*in_neighborhood/std_dev, axis=-1)
+        # update the context_embedding
+        self.context_embedding[context_ids] += - learning_rate * grad * center_embedding
+        # update the center embedding 
+        self.center_embedding[center_id] += - learning_rate * np.sum(grad * context_embedding, axis=0)         
     def fit_one_epoch(self, walks=None):
         if walks is None : 
             self.load_walks()
@@ -59,12 +78,12 @@ class Efge(Embedding):
                         if self.model_type == 'efge-bern':
                             self.update_efge_bern(self.learning_rate(), center_id, context_ids, in_neighborhood)
                         elif self.model_type =='efge-pois':
-                            raise NotImplementedError
+                            self.update_efge_poisson(self.learning_rate(), center_id, context_ids, in_neighborhood)
                         elif self.model_type == 'efge-norm':
-                            raise NotImplementedError
+                            self.update_efge_norm(self.learning_rate(), center_id, context_ids, in_neighborhood, 
+                                                  std_dev=1.)
                         else: 
                             raise ValueError('the model should be efge-bern, efge-pois or efge-norm')
-
 
 
 from dataset import Dataset
