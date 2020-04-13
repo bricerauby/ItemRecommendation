@@ -19,12 +19,12 @@ class Efge(Embedding):
         self.center_embedding = np.random.random((self.num_nodes, self.embedding_dimension))
         self.walks=[]
         
-        self.set_paths()
+        self.set_paths(name='model/efge')
 
     def learning_rate(self):
         return 1e-2
 
-    def set_paths(self):
+    def set_paths(self, name):
 
         if not os.path.exists(name):
             os.makedirs(name)

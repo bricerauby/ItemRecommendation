@@ -185,6 +185,7 @@ class Dataset(object):
                          num_walks=80, workers=6)
             model.generate_walks()
             model.train(iter = 10, workers=6)
+            
         elif algorithm_name == 'line' :
             model = Line_model(graph = self.residual_network)
             model.train()
@@ -195,20 +196,35 @@ class Dataset(object):
         # we replace the network by its embedding to save memory
         self.residual_network = model.word_vectors
         self.embedded = True
-
-    def embed_edges(self):
-        if not self.embedded:
-            raise ValueError('First embed the network')
-        else:
-            self.x_train = self.x_train.tolist()
-            self.x_test = self.x_test.tolist()
-            for i in tqdm.tqdm(range(len(self.x_train))):
-                edge = self.x_train[i]
-                self.x_train[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
-            for i in tqdm.tqdm(range(len(self.x_test))):
-                edge = self.x_test[i]
-                self.x_test[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
-                    
+        
+    def load_embeddings(self, algorithm_name):
+        vectors_path = 'dict_embeddings/' + algorithm_name + '.json'
+        with open(vectors_path, 'r') as f:
+            self.residual_network = json.load(f)
+            
+    def embed_edges(self, index=None, train=True, test=True):
+        if index is None :
+            if not self.embedded:
+                raise ValueError('First embed the network')
+            else:
+                self.x_train = self.x_train.tolist()
+                self.x_test = self.x_test.tolist()
+                for i in tqdm.tqdm(range(len(self.x_train))):
+                    edge = self.x_train[i]
+                    self.x_train[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
+                for i in tqdm.tqdm(range(len(self.x_test))):
+                    edge = self.x_test[i]
+                    self.x_test[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
+        else :
+            if train :
+                edges = self.x_train[index]
+            if test :
+                edges = self.x_test[index]
+            index_embeddings = np.zeros((len(index), 128))
+            for i, edge in enumerate(edges) :
+                index_embeddings[i] = np.asarray(self.residual_network[str(edge[0])]) * np.asarray(self.residual_network[str(edge[1])])
+            return index_embeddings 
+        
 if __name__ == '__main__':
 
     if not DEBUG:
