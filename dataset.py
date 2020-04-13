@@ -126,7 +126,7 @@ class Dataset(object):
             self.x_test += list(removed_edges)
             self.y_test += len(self.x_test) * [1]
             self.x_test += fictive_edges[:n_test//2]
-            self.y_test += n_test * [0]
+            self.y_test += n_test//2 * [0]
             self.x_test = np.asarray(self.x_test)
             self.y_test = np.asarray(self.y_test)
 
