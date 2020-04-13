@@ -55,11 +55,11 @@ class Node2vec(Embedding):
         self.set_paths(path)
         self.n_batch = n_batch
 
-    def compute_walks(self, n_batch=0, walk_length=10, num_walks=80, p=1, q=1):
+    def compute_walks(self, n_batch=0, walk_length=10, num_walks=80, p=1, q=1, workers=1):
 
         if n_batch == 0:
             self.walks = node2vec.Node2Vec(
-                self.graph, walk_length=walk_length, num_walks=num_walks, p=p, q=q, workers=1).walks
+                self.graph, walk_length=walk_length, num_walks=num_walks, p=p, q=q, workers=workers).walks
             self.save_walks()
             self.walks = None
         else:

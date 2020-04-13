@@ -1,8 +1,8 @@
 import os
-
 import numpy as np
-
 from embedding import Embedding
+import node2vec
+from dataset import Dataset
 
 def sigmoid(x): 
     return 1 / (1 + np.exp(-x))
@@ -17,7 +17,7 @@ class Efge(Embedding):
         self.n_negative_sampling = n_negative_sampling
         self.context_embedding = np.random.random((self.num_nodes, self.embedding_dimension))
         self.center_embedding = np.random.random((self.num_nodes, self.embedding_dimension))
-        self.walks=[]
+        self.walks = []
         
         self.set_paths(name='model/efge')
 
@@ -30,8 +30,15 @@ class Efge(Embedding):
             os.makedirs(name)
         self.vectors_path = '{}/embedding.json'.format(name)
         # efge and node2vec share the same walks
-        self.walks_path = 'models/node2vec/walks.json'
-
+        self.walks_path = 'model/efge/walks.json'
+        
+    def compute_walks(self, walk_length=10, num_walks=80,
+                     p=1, q=1, workers=4) :
+        self.walks = node2vec.Node2Vec(
+                self.graph, walk_length=walk_length, num_walks=num_walks,
+                p=p, q=q, workers=workers).walks
+        self.save_walks()
+        
     def update_efge_bern(self, learning_rate, center_id, context_ids, in_neighborhood):
         context_embedding = self.context_embedding[context_ids]
         center_embedding = np.expand_dims(self.center_embedding[center_id], axis=0)
@@ -60,7 +67,8 @@ class Efge(Embedding):
         # update the context_embedding
         self.context_embedding[context_ids] += - learning_rate * grad * center_embedding
         # update the center embedding 
-        self.center_embedding[center_id] += - learning_rate * np.sum(grad * context_embedding, axis=0)         
+        self.center_embedding[center_id] += - learning_rate * np.sum(grad * context_embedding, axis=0)    
+        
     def fit_one_epoch(self, walks=None):
         if walks is None : 
             self.load_walks()
@@ -72,11 +80,16 @@ class Efge(Embedding):
                     if j==i: 
                         pass 
                     else:
-                        negative_context = self.nodes[np.random.randint(0,self,num_nodes,self.n_negative_sampling)]
-                        context_ids = np.concatenate([[context_ids], negative_context.tolist()])
-                        in_neighborhood = np.asarray([1]+ self.n_negative_sampling[0])
+                        context_id = int(context_id)
+                        center_id = int(center_id)
+                        negative_context = self.nodes[np.random.randint(0, self.num_nodes,
+                                                                        self.n_negative_sampling)]
+                        negative_context = np.array([int(i) for i in negative_context])
+                        context_ids = np.concatenate([[context_id], negative_context.tolist()])
+#                         print(context_ids.shape, context_ids)
+                        in_neighborhood = np.asarray([1]+ self.n_negative_sampling*[0])
                         if self.model_type == 'efge-bern':
-                            self.update_efge_bern(self.learning_rate(), center_id, context_ids, in_neighborhood)
+                            self.update_efge_bern(self.learning_rate(), center_id, list(context_ids), in_neighborhood)
                         elif self.model_type =='efge-pois':
                             self.update_efge_poisson(self.learning_rate(), center_id, context_ids, in_neighborhood)
                         elif self.model_type == 'efge-norm':
@@ -84,12 +97,20 @@ class Efge(Embedding):
                                                   std_dev=1.)
                         else: 
                             raise ValueError('the model should be efge-bern, efge-pois or efge-norm')
-
-
-from dataset import Dataset
-dataset = Dataset()
-
-efge = Efge(dataset.residual_network)
-efge.load_walks()
-walks = efge.walks[:100]
-efge.fit_one_epoch(walks)
+    def get_word_vectors(self,):
+        self.word_vectors = {str(elt) : list(value.astype('float')) for (elt, value) in\
+                 enumerate(self.center_embedding)}   
+         
+if __name__ == '__main__' :
+    
+    nb_epochs = 10
+    dataset = Dataset().residual_network
+    efge = Efge(dataset)
+    import gc; gc.collect()
+    efge.compute_walks(walk_length=10, num_walks=80, workers=4)
+    
+    for epochs in range(nb_epochs) :
+        efge.fit_one_epoch(efge.walks)
+    efge.get_word_vectors()
+    efge.save_embedding()
+#     efge.load_walks()

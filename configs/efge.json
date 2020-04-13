@@ -2,23 +2,22 @@
     "dataset": {
         "seed": 0,
         "data_path": "data/amazon-meta.txt",
-        "residual_ratio": 0.5, 
-        "precompute":true
+        "residual_ratio": 0.5
     },
     "embedding": {
         "seed" : 0,
-        "algorithm_name": "node2vec",
+        "algorithm_name": "efge",
         "num_walks_per_node": 80,
         "walk_length": 10,
-        "n_batch": 0,
+        "n_batch": 1,
         "precompute": true, 
-        "path": "models/node2vec",
+        "path": "models/efge",
 	"nb_epochs": 10,
 	"workers":4
     },
     "classifier" :{
         "seed" : 0,
         "classifier": "log",
-        "n_batch": 0
+        "n_batch": 1
     }
 }

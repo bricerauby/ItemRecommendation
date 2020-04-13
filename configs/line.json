@@ -5,15 +5,17 @@
         "residual_ratio": 0.5
     },
     "embedding": {
-        "seed" : 0,
-        "algorithm_name": "deep_walk",
-        "num_walks_per_node": 80,
-        "walk_length": 10,
-        "n_batch": 1,
-        "precompute": true, 
-        "path": "models/deep_walk",
-	"nb_epochs": 10,
-	"workers":4
+	"order": 2,
+	 "negsamplesize": 4,
+	 "dimension": 32,
+	 "batchsize": 128,
+	 "epochs": 15,
+	 "learning_rate": 0.025,
+	 "negativepower": 0.75,
+	"seed" : 0,
+	"algorithm_name": "line", 
+	"path": "models/line",
+	"epochs": 10,
     },
     "classifier" :{
         "seed" : 0,

@@ -9,10 +9,10 @@ import tqdm
 import numpy as np
 import networkx
 import tempfile
-
 import embedding
 from deep_walk import DeepWalk
-from line import Line
+from line import Line_model
+from efge import Efge
 
 DEBUG = True
 
@@ -20,6 +20,7 @@ DEBUG = True
 class Dataset(object):
     '''
     Dataset contains the network, the residual network, the train set and the test set
+
     Parameters
     ----------
     data_path : str
@@ -28,6 +29,7 @@ class Dataset(object):
         The proportion of edges to keep in the residual network 
     seed : int
         Seed for reproductibility of the dataset generation
+
     Attributes
     ----------
     residual_network : networkx graph representation of the residual network
@@ -41,15 +43,12 @@ class Dataset(object):
 
     def __init__(self, data_path='data/amazon-meta.txt', residual_ratio=0.5, seed=0, precompute=False):
         if precompute:
-            self.residual_network = networkx.read_edgelist( 'data/residual_network.txt')
+            networkx.read_edgelist(self.residual_network, 'data/residual_network.txt')
             with open('data/train.json', 'r') as f:
-                train = json.load(f)
-            self.x_train = np.asarray(train['x_train'])
-            self.y_train = np.asarray(train['y_train'])
+                json.dump({'x_train':self.x_train.tolist(), 'y_train': self.y_train.tolist()}, f)
             with open('data/test.json', 'r') as f:
-                test = json.load(f)
-            self.x_test = np.asarray(test['x_test'])
-            self.y_test = np.asarray(test['y_test'])
+                json.load({'x_test':self.x_test.tolist(), 'y_test': self.y_test.tolist()}, f)
+
 
         else:
             network = networkx.read_edgelist(data_path)
@@ -155,7 +154,7 @@ class Dataset(object):
         return self.x_train, self.y_train, self.x_test, self.y_test
 
     def embed_network(self, seed, algorithm_name, num_walks_per_node, walk_length,
-                      n_batch, precompute, path):
+                      n_batch, precompute, path, workers, nb_epochs):
         '''
         methods that embed the network with a given algorithm, the network is replaced by its embedding to save memory
         '''
@@ -170,40 +169,50 @@ class Dataset(object):
                     try:  # try to load the walk
                         model = embedding.Node2vec(path, n_batch)
                         model.fit()
-                        model.save_embedding()
                     except:
                         model = embedding.Node2vec(
                             self.residual_network, n_batch=n_batch, path=path)
                         model.compute_walks(
-                            walk_length=walk_length, num_walks=num_walks_per_node, n_batch=n_batch)
+                            walk_length=walk_length, num_walks=num_walks_per_node,
+                            n_batch=n_batch, workers=workers)
                         model.fit()
-                        model.save_embedding()
             else:
                 model = embedding.Node2vec(
                     self.residual_network, n_batch=n_batch, path=path)
                 model.compute_walks(walk_length=walk_length,
-                                    num_walks=num_walks_per_node, n_batch=n_batch)
+                                    num_walks=num_walks_per_node, 
+                                    n_batch=n_batch, workers=workers)
                 model.fit()
                 
         elif algorithm_name == 'deep_walk':
-            model = DeepWalk(graph=self.residual_network, walk_length=10, 
-                         num_walks=80, workers=6)
+            model = DeepWalk(graph=self.residual_network, walk_length=walk_length, 
+                             num_walks=num_walks_per_node, workers=workers)
             model.generate_walks()
-            model.train(iter = 10, workers=6)
+            model.train(iter = nb_epochs, workers=workers)
             
         elif algorithm_name == 'line' :
             model = Line_model(graph = self.residual_network)
             model.train()
+            
+        elif algorithm_name == 'efge' :
+            model = Efge(self.residual_network)
+            model.compute_walks(walk_length=walk_length,
+                                num_walks=num_walks_per_node, 
+                                workers=workers)
+            for epochs in range(nb_epochs) :
+                model.fit_one_epoch(model.walks)
+            model.get_word_vectors()
         else:
             raise NotImplementedError('embedding is not implemented')
-        
-
+            
+        model.save_embedding()
+        import gc; gc.collect()
         # we replace the network by its embedding to save memory
         self.residual_network = model.word_vectors
         self.embedded = True
         
     def load_embeddings(self, algorithm_name):
-        vectors_path = 'dict_embeddings/' + algorithm_name + '.json'
+        vectors_path = 'model/' + algorithm_name + '/embeddings.json'
         with open(vectors_path, 'r') as f:
             self.residual_network = json.load(f)
             
