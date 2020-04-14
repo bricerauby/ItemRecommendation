@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from embedding import Embedding
+from models import Embedding
 import node2vec
 
 

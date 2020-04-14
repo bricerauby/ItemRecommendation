@@ -2,10 +2,11 @@
 ItemRecommendationEnv/*
 data/*
 .mypy_cache/*
-__pycache__/*
-models/*
+*__pycache__*
 main.ipynb
 .ipynb_checkpoints/*
 line_model_weights
 random_walk
 loss_evolution
+trained_models/*
+computed_graphs/*

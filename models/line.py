@@ -10,7 +10,7 @@ import numpy as np
 import collections
 from tqdm import tqdm
 import json
-from embedding import Embedding
+from models import Embedding
 
 args = {}
 args["graph_path"] = 'data/amazon-meta.txt'
