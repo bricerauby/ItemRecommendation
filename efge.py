@@ -2,7 +2,7 @@ import os
 import numpy as np
 from embedding import Embedding
 import node2vec
-from dataset import Dataset
+
 
 def sigmoid(x): 
     return 1 / (1 + np.exp(-x))
@@ -102,7 +102,7 @@ class Efge(Embedding):
                  enumerate(self.center_embedding)}   
          
 if __name__ == '__main__' :
-    
+    from dataset import Dataset
     nb_epochs = 10
     dataset = Dataset().residual_network
     efge = Efge(dataset)
