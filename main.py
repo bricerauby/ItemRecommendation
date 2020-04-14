@@ -20,7 +20,7 @@ def train_by_batch(clf, dataset, nb_epochs) :
             y_batch = y_train[b_indexes]
             x_batch = dataset.embed_edges(b_indexes, test = False)
             clf.partial_fit(x_batch, y_batch, classes = np.unique(y_train)) 
-            y_pred =  clf.predict_proba(x_batch)[:, 0]
+            y_pred =  clf.predict_proba(x_batch)[:, 1]
             loss.append(log_loss(y_batch, y_pred))
     return clf, loss
 
@@ -34,7 +34,7 @@ def test_by_batch(clf, dataset, split = 'test'):
     for i in tqdm.tqdm(range((len(index_test)// batch_size_test) + 1)):
         b_indexes = index_test[i * batch_size_test:(i + 1) * batch_size_test]
         x_batch = dataset.embed_edges(b_indexes, train=(split == 'train'))
-        test_pred_prob = clf.predict_proba(x_batch)[:, 0]
+        test_pred_prob = clf.predict_proba(x_batch)[:, 1]
         y_pred[b_indexes] = test_pred_prob
     return y_pred
 
