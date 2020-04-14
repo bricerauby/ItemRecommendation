@@ -6,9 +6,28 @@ import networkx
 import node2vec
 import time
 import tqdm
+
+from gensim.models import Word2Vec
+from gensim.models.word2vec import LineSentence
+from gensim.models.callbacks import CallbackAny2Vec
 DEBUG = True
 
+class callback(CallbackAny2Vec):
+    '''Callback to print loss after each epoch.'''
 
+    def __init__(self, all_loss):
+        self.epoch = 0
+        self.loss_to_be_subed = 0
+        self.all_loss = all_loss
+
+    def on_epoch_end(self, model):
+        loss = model.get_latest_training_loss()
+        loss_now = loss - self.loss_to_be_subed
+        self.loss_to_be_subed = loss
+        self.all_loss.append(loss_now)
+        print('Loss after epoch {}: {}'.format(self.epoch, loss_now))
+        self.epoch += 1
+        
 class Embedding():
     def __init__(self, graph=None):
         self.graph = graph
@@ -60,6 +79,7 @@ class Node2vec(Embedding):
         if n_batch == 0:
             self.walks = node2vec.Node2Vec(
                 self.graph, walk_length=walk_length, num_walks=num_walks, p=p, q=q, workers=workers).walks
+#             import pdb; pdb.set_trace()
             self.save_walks()
             self.walks = None
         else:
@@ -80,18 +100,39 @@ class Node2vec(Embedding):
             super().load_walks()
             self.set_paths(self.path)
 
-    def fit(self, window=10, embedding_size=128):
+    def fit(self, window=10, embedding_size=128, workers=8, iter=50):
+        kwargs = {}
+        kwargs["min_count"] = kwargs.get("min_count", 0)
+        kwargs["size"] = embedding_size
+        kwargs["sg"] = 1  # skip gram
+        kwargs["workers"] = workers
+        kwargs["window"] = window
+        kwargs["iter"] = iter
+        kwargs["compute_loss"] = True
+        kwargs["min_alpha"] = 1e-2
+        call_back = callback(all_loss=[])
+        kwargs['callbacks'] = [call_back]
         if self.n_batch == 0:
             self.load_walks()
-            self.word_vectors = gensim.models.Word2Vec(
-                self.walks, size=embedding_size, min_count=0, sg=1, workers=4, window=window).wv
+            kwargs["sentences"] = self.walks
+            self.word_vectors = gensim.models.Word2Vec(**kwargs).wv
 
         else:
             for batch_index in tqdm.tqdm(range(self.n_batch)):
                 self.load_walks(batch_index=batch_index)
+                kwargs["sentences"] = self.walks
                 if batch_index == 0:
-                    model = gensim.models.Word2Vec(
-                        self.walks, size=embedding_size, min_count=0, sg=1, workers=4, window=window)
+                    print("Learning embedding vectors...")
+                    model = Word2Vec(**kwargs)
+#                     print("Learning embedding vectors done!")
+#                     model = gensim.models.Word2Vec(
+#                         self.walks, size=embedding_size,
+#                         min_count=0, sg=1, workers=4,
+#                         window=window)
+                    import matplotlib.pyplot as plt
+                    fig = plt.figure()
+                    plt.plot(call_back.all_loss)
+                    fig.savefig('node2vec_loss.png')
                 else:
                     model.train(self.walks, epochs=model.iter,
                                 total_words=self.num_nodes)
@@ -102,6 +143,7 @@ class Node2vec(Embedding):
 
 if __name__ == "__main__":
     from dataset import Dataset
+    DEBUG = False
     if DEBUG:
         embedding = Node2vec(n_batch=8)
         # embedding = Node2vec(Dataset().residual_network)
@@ -110,8 +152,9 @@ if __name__ == "__main__":
 
     else:
         dataset = Dataset()
-        embedding = Node2vec(Dataset().residual_network)
-        embedding.compute_walks()
+        embedding = Node2vec(Dataset.residual_network, n_batch=1)
+        embedding.compute_walks(walk_length=10, num_walks=80,
+                                workers=8, n_batch=1)
         embedding.save_walks()
 
     embedding.fit()

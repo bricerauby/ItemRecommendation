@@ -179,15 +179,17 @@ class Dataset(object):
             else:
                 model = embedding.Node2vec(
                     self.residual_network, n_batch=n_batch, path=path)
-                model.compute_walks(walk_length=walk_length,
-                                    num_walks=num_walks_per_node, 
-                                    n_batch=n_batch, workers=workers)
+#                 model.compute_walks(walk_length=walk_length,
+#                                     num_walks=num_walks_per_node, 
+#                                     n_batch=n_batch, workers=workers)
+                model.load_walks()
                 model.fit()
                 
         elif algorithm_name == 'deep_walk':
             model = DeepWalk(graph=self.residual_network, walk_length=walk_length, 
                              num_walks=num_walks_per_node, workers=workers)
             model.generate_walks()
+#             model.load_walks()
             model.train(iter = nb_epochs, workers=workers)
             
         elif algorithm_name == 'line' :
@@ -196,9 +198,10 @@ class Dataset(object):
             
         elif algorithm_name == 'efge' :
             model = Efge(self.residual_network)
-            model.compute_walks(walk_length=walk_length,
-                                num_walks=num_walks_per_node, 
-                                workers=workers)
+#             model.compute_walks(walk_length=walk_length,
+#                                 num_walks=num_walks_per_node, 
+#                                 workers=workers)
+            model.load_walks()
             for epochs in range(nb_epochs) :
                 model.fit_one_epoch(model.walks)
             model.get_word_vectors()

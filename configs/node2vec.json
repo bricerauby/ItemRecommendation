@@ -14,7 +14,7 @@
         "precompute": true, 
         "path": "models/node2vec",
         "nb_epochs": 10,
-        "workers":4
+        "workers":8
     },
     "classifier" :{
         "seed" : 0,
