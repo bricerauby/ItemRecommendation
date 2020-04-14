@@ -2,7 +2,6 @@ import os
 import numpy as np
 from embedding import Embedding
 import node2vec
-from dataset import Dataset
 
 def sigmoid(x): 
     return 1 / (1 + np.exp(-x))
@@ -19,7 +18,7 @@ class Efge(Embedding):
         self.center_embedding = np.random.random((self.num_nodes, self.embedding_dimension))
         self.walks = []
         
-        self.set_paths(name='model/efge')
+        self.set_paths(name='models/efge')
 
     def learning_rate(self):
         return 1e-2
@@ -30,7 +29,7 @@ class Efge(Embedding):
             os.makedirs(name)
         self.vectors_path = '{}/embedding.json'.format(name)
         # efge and node2vec share the same walks
-        self.walks_path = 'model/efge/walks.json'
+        self.walks_path = 'models/efge/walks.json'
         
     def compute_walks(self, walk_length=10, num_walks=80,
                      p=1, q=1, workers=4) :
@@ -104,6 +103,7 @@ class Efge(Embedding):
 if __name__ == '__main__' :
     
     nb_epochs = 10
+    from dataset import Dataset
     dataset = Dataset().residual_network
     efge = Efge(dataset)
     import gc; gc.collect()
