@@ -17,8 +17,8 @@ args["graph_path"] = 'data/amazon-meta.txt'
 args["order"] = 2
 args["negsamplesize"] = 5
 args["dimension"] = 128
-args["batchsize"] = 1024
-args["epochs"] = 10
+args["batchsize"] = 128
+args["epochs"] = 30
 args["learning_rate"] = 0.025  # As starting value in paper
 args["negativepower"] = 0.75 
 
