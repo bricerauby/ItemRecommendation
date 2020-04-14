@@ -32,5 +32,5 @@ if __name__ == "__main__":
 
     clf.fit(dataset.x_train, dataset.y_train)
     test_pred_prob = clf.predict_proba(dataset.x_test)[:, 1]
-    print("10 first preds", test_pred_prob[:10]
+    print("10 first preds", test_pred_prob[:10])
     print('auc score on test set', roc_auc_score(dataset.y_test, test_pred_prob))
