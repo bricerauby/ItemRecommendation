@@ -221,6 +221,7 @@ class Dataset(object):
             
     def embed_edges(self, index=None, train=True, test=True):
         if index is None :
+            self.embedded = True
             if not self.embedded:
                 raise ValueError('First embed the network')
             else:
