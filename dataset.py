@@ -215,7 +215,7 @@ class Dataset(object):
         self.embedded = True
         
     def load_embeddings(self, algorithm_name):
-        vectors_path = 'models/' + algorithm_name + '/embeddings.json'
+        vectors_path = 'models/' + algorithm_name + '/embedding.json'
         with open(vectors_path, 'r') as f:
             self.residual_network = json.load(f)
             
