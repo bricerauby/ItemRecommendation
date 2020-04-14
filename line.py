@@ -10,7 +10,6 @@ import numpy as np
 import collections
 from tqdm import tqdm
 import json
-from embedding import Embedding
 
 args = {}
 args["graph_path"] = 'data/amazon-meta.txt'
@@ -18,9 +17,9 @@ args["graph_path"] = 'data/amazon-meta.txt'
 args["order"] = 2
 args["negsamplesize"] = 5
 args["dimension"] = 128
-args["batchsize"] = 64
-args["epochs"] = 50
-args["learning_rate"] = 0.1  # As starting value in paper
+args["batchsize"] = 128
+args["epochs"] = 30
+args["learning_rate"] = 0.025  # As starting value in paper
 args["negativepower"] = 0.75 
 
 class VoseAlias(object):
@@ -159,12 +158,12 @@ class Line(nn.Module):
         loss = positivebatch + negativebatch
         return -torch.mean(loss)
     
-class Line_model(Embedding) :  
+class Line_model :  
     def __init__(self, graph, args=args, 
-                 path='models/line') :
+                 vectors_path = 'line_model.json') :
         self.args = args
         self.model = None
-        self.set_paths(path)
+        self.vectors_path = vectors_path
         self.line = None
         self.graph = graph
     def save_embedding(self):
@@ -185,6 +184,7 @@ class Line_model(Embedding) :
     def train(self) :
         # Create dict of distribution when opening file
         args = self.args
+        print("Reading edgelist file...")
         edgedistdict, nodedistdict, nodedegrees, maxindex = makeDist(
             self.graph, args['negativepower'])
 
@@ -228,7 +228,6 @@ class Line_model(Embedding) :
                 lossdata["it"].append(it)
                 it += 1
         self.line = line
-        self.loss = lossdata
         self.word_vectors = {str(elt) : list(value.astype('float')) for (elt, value) in\
                              enumerate(line.nodes_embeddings.weight.data.detach().cpu().numpy())}
         
@@ -251,7 +250,3 @@ if __name__ == "__main__":
     model.train()
     print("Saving the embedding...")
     model.save_embedding()
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    plt.plot(model.loss['loss'])
-    fig.savefig('models/line/line_loss.png')

@@ -13,8 +13,8 @@
         "n_batch": 0,
         "precompute": true, 
         "path": "models/node2vec",
-	"nb_epochs": 10,
-	"workers":4
+        "nb_epochs": 10,
+        "workers":4
     },
     "classifier" :{
         "seed" : 0,

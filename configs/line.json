@@ -9,13 +9,12 @@
 	 "negsamplesize": 4,
 	 "dimension": 32,
 	 "batchsize": 128,
-	 "epochs": 15,
 	 "learning_rate": 0.025,
 	 "negativepower": 0.75,
 	"seed" : 0,
 	"algorithm_name": "line", 
 	"path": "models/line",
-	"epochs": 10,
+	"epochs": 15
     },
     "classifier" :{
         "seed" : 0,
