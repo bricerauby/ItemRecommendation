@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_path', type=str, required = True, help='path to the config_file')
-    args = parser.parse_args('--config_path configs/node2vec.json'.split())
+    args = parser.parse_args()
     config_path = args.config_path
 
     with open(config_path, 'r') as f: 

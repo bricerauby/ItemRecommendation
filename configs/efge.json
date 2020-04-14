@@ -10,10 +10,10 @@
         "num_walks_per_node": 80,
         "walk_length": 10,
         "n_batch": 1,
-        "precompute": true, 
+        "precompute": false, 
         "path": "models/efge",
-	"nb_epochs": 10,
-	"workers":4
+        "nb_epochs": 10,
+        "workers":4
     },
     "classifier" :{
         "seed" : 0,
