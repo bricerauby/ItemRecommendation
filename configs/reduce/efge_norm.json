@@ -6,11 +6,11 @@
         "residual_ratio": 0.5,
         "precomputed": false,
         "save_path": "computed_graphs",
-        "reduce_dataset" : 5000
+        "reduce_dataset" : 1000
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/reduce/efge_bern",
+        "save_path": "trained_models/reduce_1000/efge_bern",
         "algorithm_name": "efge",
         "precomputed": false,
         "walks": {
@@ -22,7 +22,7 @@
             "workers": 24
         },
         "training": {
-            "nb_epochs": 40,
+            "nb_epochs": 5,
             "workers": 0,
             "embedding_size": 128,
             "n_negative_sampling" : 5,

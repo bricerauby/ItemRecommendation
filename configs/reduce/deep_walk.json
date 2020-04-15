@@ -6,11 +6,11 @@
         "residual_ratio": 0.5,
         "precomputed": false,
         "save_path": "computed_graphs",
-        "reduce_dataset" : 5000
+        "reduce_dataset" : 1000
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/reduce/deep_walk",
+        "save_path": "trained_models/reduce_1000/deep_walk",
         "algorithm_name": "deep_walk",
         "precomputed": false,
         "walks": {
@@ -20,7 +20,7 @@
             "workers": 24
         },
         "training": {
-            "nb_epochs": 10,
+            "nb_epochs": 5,
             "workers": 24,
             "window": 10,
             "embedding_size": 128
