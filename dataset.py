@@ -77,7 +77,8 @@ class Dataset(object):
             if not reduce_dataset is None:
                 network = network.subgraph(list(network.nodes())[:reduce_dataset]).copy()
                 network = networkx.relabel.convert_node_labels_to_integers(network)
-                
+                mapping = dict(zip(list(network.nodes()), [str(node) for node in list(network.nodes())]))
+                network = networkx.relabel.relabel_nodes(network, mapping)
             
             removed_edges = set()
             kept_edges = set()
