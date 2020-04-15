@@ -10,7 +10,7 @@
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/deep_walk",
+        "save_path": "trained_models/reduce/deep_walk",
         "algorithm_name": "deep_walk",
         "precomputed": false,
         "walks": {

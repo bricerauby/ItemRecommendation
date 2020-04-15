@@ -10,7 +10,7 @@
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/efge_bern",
+        "save_path": "trained_models/reduce/efge_bern",
         "algorithm_name": "efge",
         "precomputed": false,
         "walks": {

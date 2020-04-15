@@ -10,7 +10,7 @@
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/node2vec",
+        "save_path": "trained_models/reduce/node2vec",
         "algorithm_name": "node2vec",
         "precomputed": false,
         "walks": {
