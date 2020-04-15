@@ -95,7 +95,7 @@ class Efge(Embedding):
                             print(np.sum(grad_negative**2))
                             print(np.sum(grad_positive**2))
             else:
-                for walk in tqdm(self.walks):
+                for walk in tqdm.tqdm(self.walks):
                     for i, center_id in enumerate(walk):
                         for j, context_id in enumerate(walk):
                             if j == i:
