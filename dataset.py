@@ -79,7 +79,7 @@ class Dataset(object):
                 network = networkx.relabel.convert_node_labels_to_integers(network)
                 mapping = dict(zip(list(network.nodes()), [str(node) for node in list(network.nodes())]))
                 network = networkx.relabel.relabel_nodes(network, mapping)
-            
+            print(networkx.info(network))
             removed_edges = set()
             kept_edges = set()
             # get the number of the edges to remove
@@ -241,3 +241,4 @@ if __name__ == '__main__':
     with open(config_path, 'r') as f: 
         config = json.load(f)
     dataset = Dataset(**config['dataset'])
+    

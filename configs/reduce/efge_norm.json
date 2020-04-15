@@ -27,7 +27,8 @@
             "embedding_size": 128,
             "n_negative_sampling" : 5,
             "update_type": "norm",
-            "batch_size": 1
+            "batch_size": 1, 
+            "power": 0.75
         }
     },
     "classifier": {

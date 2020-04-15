@@ -4,12 +4,13 @@
         "seed": 0,
         "data_path": "data/amazon-meta.txt",
         "residual_ratio": 0.5,
-        "precomputed": false,
-        "save_path": "computed_graphs"
+        "precomputed": true,
+        "save_path": "computed_graphs",
+        "reduce_dataset" : 100
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/efge_bern",
+        "save_path": "trained_models/reduce_1000/efge_bern",
         "algorithm_name": "efge",
         "precomputed": false,
         "walks": {
@@ -17,17 +18,16 @@
             "p": 1,
             "q": 1,
             "walk_length": 10,
-            "precomputed": false,
+            "precomputed": true,
             "workers": 24
         },
         "training": {
-            "nb_epochs": 40,
+            "nb_epochs": 5,
             "workers": 0,
             "embedding_size": 128,
             "n_negative_sampling" : 5,
             "update_type": "fast_bern",
-            "batch_size": 1, 
-            "power": 0.75
+            "batch_size": 1
         }
     },
     "classifier": {
