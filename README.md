@@ -8,4 +8,6 @@ Python3
 - First install pip dependances : 
 ```pip install -r requirements.txt ```
 - Then download the dataset : 
-```python dataset.py ``` (it will download the dataset, decompress it and store it according to the repo architecture)
+```python get_dataset.py ``` (it will download the dataset, decompress it and store it according to the repo architecture)
+
+## Training

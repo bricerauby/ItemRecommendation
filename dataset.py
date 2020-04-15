@@ -44,8 +44,8 @@ class Dataset(object):
 
     def __init__(self, data_path, residual_ratio, seed, precomputed, save_path, reduce_dataset=None):
         save_path = os.path.join(save_path, 'seed_{}'.format(seed))
-        if DEBUG:
-            save_path += '_debug'
+        if not reduce_dataset is None:
+            save_path += '_reduced_{}'.format(reduce_dataset)
         try :
             os.makedirs(save_path)
         except: 
@@ -74,8 +74,8 @@ class Dataset(object):
         else:
             network = networkx.read_edgelist(data_path)
 
-            if DEBUG:
-                network = network.subgraph(list(network.nodes())[:10000]).copy()
+            if not reduce_dataset is None:
+                network = network.subgraph(list(network.nodes())[:reduce_dataset]).copy()
                 network = networkx.relabel.convert_node_labels_to_integers(network)
                 
             
