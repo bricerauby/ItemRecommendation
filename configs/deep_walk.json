@@ -16,11 +16,11 @@
             "num_walks_per_node": 80,
             "walk_length": 10,
             "precomputed": false,
-            "workers": 8
+            "workers": 24
         },
         "training": {
             "nb_epochs": 10,
-            "workers": 8,
+            "workers": 24,
             "window": 10,
             "embedding_size": 128
         }

@@ -12,7 +12,7 @@ from models.efge import Efge
 from models.line import Line_model
 from models.deep_walk import DeepWalk
 
-DEBUG = True
+DEBUG = False
 
 
 class Dataset(object):
@@ -31,7 +31,8 @@ class Dataset(object):
         wether a precomputed residual graph and train/test split should be used or not
     save_path : str 
         the path to the dir where the precomputed should be stored to or loaded from (it depends on `precomputed` value)
-
+    reduce_dataset: int :
+        the number of node to take in case we want to reduce the dataset
     Attributes
     ----------
     residual_network : networkx graph representation of the residual network
@@ -41,7 +42,7 @@ class Dataset(object):
     y_test : the labels for the test set 0 is fictive edge 1 is existing edge
     '''
 
-    def __init__(self, data_path, residual_ratio, seed, precomputed, save_path):
+    def __init__(self, data_path, residual_ratio, seed, precomputed, save_path, reduce_dataset=None):
         save_path = os.path.join(save_path, 'seed_{}'.format(seed))
         if DEBUG:
             save_path += '_debug'
@@ -74,7 +75,9 @@ class Dataset(object):
             network = networkx.read_edgelist(data_path)
 
             if DEBUG:
-                network = network.subgraph(list(network.nodes())[:100]).copy()
+                network = network.subgraph(list(network.nodes())[:10000]).copy()
+                network = networkx.relabel.convert_node_labels_to_integers(network)
+                
             
             removed_edges = set()
             kept_edges = set()
@@ -200,30 +203,18 @@ class Dataset(object):
 
         elif algorithm_name == 'node2vec':
             model = Node2vec(self.residual_network, save_path)
-            model.get_walks(**walks)
-            model.train(**training)
 
         elif algorithm_name == 'deep_walk':
             model = DeepWalk(self.residual_network, save_path)
-            model.get_walks(**walks)
-            model.train(**training)
-
-        elif algorithm_name == 'line':
-            model = Line_model(graph=self.residual_network)
-            model.train()
 
         elif algorithm_name == 'efge':
-            model = Efge(self.residual_network)
-#             model.compute_walks(walk_length=walk_length,
-#                                 num_walks=num_walks_per_node,
-#                                 workers=workers)
-            model.load_walks()
-            for epochs in range(nb_epochs):
-                model.fit_one_epoch(model.walks)
-            model.get_word_vectors()
+            model = Efge(self.residual_network, save_path)
+
         else:
             raise NotImplementedError('embedding is not implemented')
 
+        model.get_walks(**walks)
+        model.train(**training)
         model.save_embedding()
         # we replace the network by its embedding to save memory
         self.residual_network = model.word_vectors

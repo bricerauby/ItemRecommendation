@@ -5,12 +5,13 @@
         "data_path": "data/amazon-meta.txt",
         "residual_ratio": 0.5,
         "precomputed": false,
-        "save_path": "computed_graphs"
+        "save_path": "computed_graphs",
+        "reduce_dataset" : 5000
     },
     "embedding": {
         "seed": 0,
-        "save_path": "trained_models/node2vec",
-        "algorithm_name": "node2vec",
+        "save_path": "trained_models/efge_bern",
+        "algorithm_name": "efge",
         "precomputed": false,
         "walks": {
             "num_walks_per_node": 80,
@@ -21,10 +22,12 @@
             "workers": 24
         },
         "training": {
-            "nb_epochs": 10,
-            "workers": 24,
-            "window": 10,
-            "embedding_size": 128
+            "nb_epochs": 40,
+            "workers": 0,
+            "embedding_size": 128,
+            "n_negative_sampling" : 5,
+            "update_type": "norm",
+            "batch_size": 1
         }
     },
     "classifier": {

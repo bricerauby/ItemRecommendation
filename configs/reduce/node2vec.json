@@ -5,7 +5,8 @@
         "data_path": "data/amazon-meta.txt",
         "residual_ratio": 0.5,
         "precomputed": false,
-        "save_path": "computed_graphs"
+        "save_path": "computed_graphs",
+        "reduce_dataset" : 5000
     },
     "embedding": {
         "seed": 0,
@@ -22,8 +23,8 @@
         },
         "training": {
             "nb_epochs": 10,
-            "workers": 24,
-            "window": 10,
+            "workers": 8,
+            "window": 24,
             "embedding_size": 128
         }
     },
